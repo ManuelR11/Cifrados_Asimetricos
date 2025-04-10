@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
@@ -23,6 +23,8 @@ function FileCard() {
   const publicKeyECC = (localStorage.getItem("publicKeyECC") || "No disponible").replace("-----BEGIN PUBLIC KEY-----", "").trim().slice(0, 50) + "...";
   const publicKeyRSA = (localStorage.getItem("publicKeyRSA") || "No disponible").replace("-----BEGIN PUBLIC KEY-----", "").trim().slice(0, 50) + "...";
   const navigate = useNavigate();
+
+  const [files, setFiles] = useState([]);
 
   // Estados para carga de archivo general
   const [selectedFile, setSelectedFile] = useState(null);
@@ -110,6 +112,32 @@ function FileCard() {
 
     setOpenKeyModal(false);
   };
+
+  useEffect(() => {
+    const getFiles = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/files", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+  
+        const data = await response.json();
+
+        if (response.ok) {
+          setFiles(data.files || []);
+          console.log("Archivos:", data);
+        } else {
+          alert(data.message || "Error al obtener archivos");
+        }
+      } catch (error) {
+        console.error("Error al obtener archivos:", error);
+      }
+    };
+
+    getFiles();
+  }, []);
 
   const handleVerify = () => {
     const simulatedResult = Math.random() < 0.5;
@@ -214,15 +242,18 @@ function FileCard() {
             Archivos
           </Typography>
           <List>
-            <ListItem
+            {files.map((file) => (
+              <ListItem
+              key={file.id}
               secondaryAction={
                 <IconButton edge="end" aria-label="descargar" color="primary">
                   <CloudDownloadIcon />
                 </IconButton>
               }
             >
-              <ListItemText primary="Archivo 1" />
+              <ListItemText primary={file.filename} />
             </ListItem>
+            ))}
           </List>
         </Paper>
 
