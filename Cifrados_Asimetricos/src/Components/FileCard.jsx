@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Card,
@@ -16,11 +17,16 @@ import {
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 
-function FileCard({
-  user = "Usuario",
-  publicKeyECC = "ECC123...",
-  publicKeyRSA = "RSA456...",
-}) {
+function FileCard() {
+  // Variables globales
+  const user = localStorage.getItem("user") || "Usuario";
+  const publicKeyECC = (localStorage.getItem("publicKeyECC") || "No disponible").replace("-----BEGIN PUBLIC KEY-----", "").trim().slice(0, 50) + "...";
+  const publicKeyRSA = (localStorage.getItem("publicKeyRSA") || "No disponible").replace("-----BEGIN PUBLIC KEY-----", "").trim().slice(0, 50) + "...";
+  const navigate = useNavigate();
+
+  const [files, setFiles] = useState([]);
+
+
   const [selectedFile, setSelectedFile] = useState(null);
   const [openUploadModal, setOpenUploadModal] = useState(false);
   const [signMethod, setSignMethod] = useState(null);
@@ -122,11 +128,8 @@ function FileCard({
     setPrivateKeyFile(null);
   };
 
+
   const handleCreateKeys = () => setOpenKeyModal(true);
-  const confirmCreateKeys = () => {
-    alert("Nuevas claves generadas.");
-    setOpenKeyModal(false);
-  };
 
   const handleVerify = async () => {
     if (!verifyFile || !verifyKeyFile) {
@@ -157,6 +160,114 @@ function FileCard({
       console.error("Error al verificar:", error);
       alert("No se pudo verificar la firma.");
     }
+
+  const confirmCreateKeys = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/keys", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        console.log("Claves creadas:", data);
+        localStorage.setItem("publicKeyECC", data.ecc_public_key);
+        localStorage.setItem("publicKeyRSA", data.rsa_public_key);
+        alert("Claves creadas exitosamente ✅");
+
+        const downloadResponse = await fetch("http://localhost:8000/download-private-keys", {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+
+        if (downloadResponse.ok) {
+          const blob = await downloadResponse.blob();
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = "private_keys.zip";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+        } else {
+          alert("Error al descargar las claves privadas");
+        }
+      }
+      else {
+        alert(data.message || "Error al crear claves");
+      }
+
+    } catch (error) {
+      console.error("Error al crear claves:", error);
+      alert("Error al crear claves. Intente nuevamente.");
+    }
+
+    setOpenKeyModal(false);
+  };
+
+  useEffect(() => {
+    const getFiles = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/files", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+  
+        const data = await response.json();
+
+        if (response.ok) {
+          setFiles(data.files || []);
+          console.log("Archivos:", data);
+        } else {
+          alert(data.message || "Error al obtener archivos");
+        }
+      } catch (error) {
+        console.error("Error al obtener archivos:", error);
+      }
+    };
+
+    getFiles();
+  }, []);
+
+  const handleDownload = async (username, filename) => {
+    try {
+      const response = await fetch(`http://localhost:8000/download/${username}/${filename}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `${filename}_public_keys.zip`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } else {
+        const data = await response.json();
+        alert(data.message || "Error al descargar el archivo");
+      }
+    } catch (error) {
+      console.error("Error al descargar el archivo:", error);
+      alert("Error al descargar el archivo. Intente nuevamente.");
+    }
+  };
+
+  const handleLogout = () => {
+    navigate("/", { replace: true });
   };
 
   const closeVerifyModal = () => setOpenVerifyModal(false);
@@ -183,9 +294,14 @@ function FileCard({
             Public key RSA: {publicKeyRSA}
           </Typography>
         </Box>
-        <Button variant="contained" color="success" onClick={handleCreateKeys}>
-          Create keys
-        </Button>
+        <div style={{ display: "flex", gap: 10 }}>
+          <Button variant="contained" color="success" onClick={handleCreateKeys}>
+            Create keys
+          </Button>
+          <Button variant="contained" color="error" onClick={handleLogout}>
+            Log out
+          </Button>
+        </div>
       </Box>
 
       <Divider sx={{ my: 3, borderColor: "#444" }} />
@@ -242,15 +358,27 @@ function FileCard({
             Archivos
           </Typography>
           <List>
-            <ListItem
-              secondaryAction={
-                <IconButton edge="end" aria-label="descargar" color="primary">
-                  <CloudDownloadIcon />
-                </IconButton>
-              }
-            >
-              <ListItemText primary="Archivo 1" />
-            </ListItem>
+            {files.map((file, index) => {
+              const [username, filename] = file.filename.split("/");
+
+              return (
+                <ListItem
+                  key={index}
+                  secondaryAction={
+                    <IconButton
+                      edge="end"
+                      aria-label="descargar"
+                      color="primary"
+                      onClick={() => handleDownload(username, filename)}
+                    >
+                      <CloudDownloadIcon />
+                    </IconButton>
+                  }
+                >
+                  <ListItemText primary={file.filename} />
+                </ListItem>
+              );
+            })}
           </List>
         </Paper>
 
