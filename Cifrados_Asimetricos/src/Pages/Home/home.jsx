@@ -1,4 +1,3 @@
-import "./Home.css";
 import FileCard from "../../Components/FileCard";
 
 function Home() {

@@ -21,20 +21,18 @@ function FileCard({
   publicKeyECC = "ECC123...",
   publicKeyRSA = "RSA456...",
 }) {
-  // Estados para carga de archivo general
   const [selectedFile, setSelectedFile] = useState(null);
   const [openUploadModal, setOpenUploadModal] = useState(false);
+  const [signMethod, setSignMethod] = useState(null);
+  const [privateKeyFile, setPrivateKeyFile] = useState(null);
 
-  // Estados para verificación
   const [verifyFile, setVerifyFile] = useState(null);
   const [verifyKeyFile, setVerifyKeyFile] = useState(null);
   const [verifyResult, setVerifyResult] = useState(null);
+  const [verifyData, setVerifyData] = useState({});
   const [openVerifyModal, setOpenVerifyModal] = useState(false);
-
-  // Estados para creación de claves
   const [openKeyModal, setOpenKeyModal] = useState(false);
 
-  // Manejadores generales
   const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (file) setSelectedFile(file);
@@ -49,24 +47,116 @@ function FileCard({
   };
 
   const handleSignOption = (option) => {
-    alert(`Subiendo archivo con opción: ${option}`);
+    if (option === "RSA") {
+      setSignMethod("rsa");
+    } else if (option === "ECC") {
+      setSignMethod("ecc");
+    } else {
+      uploadFileWithoutSignature();
+    }
+  };
+
+  const uploadFileWithoutSignature = async () => {
+    const token = localStorage.getItem("token");
+    if (!token || !selectedFile) return;
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+
+    try {
+      const response = await fetch("http://localhost:8000/upload", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        alert("✅ Archivo subido sin firma");
+      } else {
+        alert("❌ " + (data.message || "Error desconocido"));
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("❌ Error al conectar con el servidor");
+    }
+
     setOpenUploadModal(false);
     setSelectedFile(null);
+    setSignMethod(null);
+    setPrivateKeyFile(null);
   };
 
-  const handleCreateKeys = () => {
-    setOpenKeyModal(true);
+  const uploadFileWithSignature = async () => {
+    const token = localStorage.getItem("token");
+    if (!token || !selectedFile || !privateKeyFile || !signMethod) return;
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    formData.append("private_key_pem", privateKeyFile);
+
+    try {
+      const response = await fetch(
+        `http://localhost:8000/upload/${signMethod}`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+      if (response.ok) {
+        alert("✅ Archivo firmado y subido con éxito");
+      } else {
+        alert("❌ " + (data.message || "Error desconocido"));
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("❌ Error al conectar con el servidor");
+    }
+
+    setOpenUploadModal(false);
+    setSelectedFile(null);
+    setSignMethod(null);
+    setPrivateKeyFile(null);
   };
 
+  const handleCreateKeys = () => setOpenKeyModal(true);
   const confirmCreateKeys = () => {
     alert("Nuevas claves generadas.");
     setOpenKeyModal(false);
   };
 
-  const handleVerify = () => {
-    const simulatedResult = Math.random() < 0.5;
-    setVerifyResult(simulatedResult);
-    setOpenVerifyModal(true);
+  const handleVerify = async () => {
+    if (!verifyFile || !verifyKeyFile) {
+      alert("Debes subir el archivo y la clave pública");
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    const formData = new FormData();
+    formData.append("file", verifyFile);
+    formData.append("public_key_pem", verifyKeyFile);
+    formData.append("method", "rsa");
+
+    try {
+      const response = await fetch("http://localhost:8000/verify-signature", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      const data = await response.json();
+      setVerifyResult(data.match);
+      setVerifyData(data);
+      setOpenVerifyModal(true);
+    } catch (error) {
+      console.error("Error al verificar:", error);
+      alert("No se pudo verificar la firma.");
+    }
   };
 
   const closeVerifyModal = () => setOpenVerifyModal(false);
@@ -83,7 +173,6 @@ function FileCard({
         color: "#fff",
       }}
     >
-      {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center">
         <Box>
           <Typography variant="h6">Welcome {user}</Typography>
@@ -101,14 +190,12 @@ function FileCard({
 
       <Divider sx={{ my: 3, borderColor: "#444" }} />
 
-      {/* Secciones */}
       <Box
         display="flex"
         gap={3}
         flexWrap="wrap"
         justifyContent="space-between"
       >
-        {/* Sección 1: Subir archivo */}
         <Paper sx={{ flex: 1, p: 2, backgroundColor: "#2c2c2c" }}>
           <Typography variant="subtitle1" gutterBottom>
             Cargar archivo
@@ -120,7 +207,6 @@ function FileCard({
             style={{ display: "none" }}
             onChange={handleFileChange}
           />
-
           <Button
             variant="outlined"
             component="label"
@@ -151,7 +237,6 @@ function FileCard({
           </Button>
         </Paper>
 
-        {/* Sección 2: Lista de archivos */}
         <Paper sx={{ flex: 1, p: 2, backgroundColor: "#2c2c2c" }}>
           <Typography variant="subtitle1" gutterBottom>
             Archivos
@@ -169,7 +254,6 @@ function FileCard({
           </List>
         </Paper>
 
-        {/* Sección 3: Verificación */}
         <Paper sx={{ flex: 1, p: 2, backgroundColor: "#2c2c2c" }}>
           <Typography variant="subtitle1" gutterBottom>
             Verificar archivo
@@ -198,7 +282,6 @@ function FileCard({
           >
             Subir archivo a verificar
           </Button>
-
           <Button
             variant="outlined"
             component="label"
@@ -214,7 +297,6 @@ function FileCard({
               Archivo: <strong>{verifyFile.name}</strong>
             </Typography>
           )}
-
           {verifyKeyFile && (
             <Typography variant="body2" color="gray">
               Clave pública: <strong>{verifyKeyFile.name}</strong>
@@ -233,8 +315,14 @@ function FileCard({
         </Paper>
       </Box>
 
-      {/* Modal: opciones de firma */}
-      <Modal open={openUploadModal} onClose={() => setOpenUploadModal(false)}>
+      <Modal
+        open={openUploadModal}
+        onClose={() => {
+          setOpenUploadModal(false);
+          setSignMethod(null);
+          setPrivateKeyFile(null);
+        }}
+      >
         <Paper
           sx={{
             width: 400,
@@ -251,37 +339,81 @@ function FileCard({
           <Typography variant="h6" align="center">
             ¿Cómo deseas subir el archivo?
           </Typography>
-
           <Typography variant="body2">
             Archivo: <strong>{selectedFile?.name}</strong>
           </Typography>
 
-          <Button variant="contained" onClick={() => handleSignOption("RSA")}>
-            Firmar con RSA
-          </Button>
+          {!signMethod && (
+            <>
+              <Button
+                variant="contained"
+                onClick={() => handleSignOption("RSA")}
+              >
+                Firmar con RSA
+              </Button>
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={() => handleSignOption("ECC")}
+              >
+                Firmar con ECC
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => handleSignOption("Sin firma")}
+              >
+                Subir sin firmar
+              </Button>
+            </>
+          )}
+
+          {signMethod && (
+            <>
+              <Typography variant="body2" color="gray">
+                Llave privada para firma ({signMethod.toUpperCase()}):
+              </Typography>
+              <input
+                type="file"
+                id="private-key-input"
+                style={{ display: "none" }}
+                onChange={(e) => setPrivateKeyFile(e.target.files[0])}
+              />
+              <Button
+                variant="outlined"
+                component="label"
+                htmlFor="private-key-input"
+              >
+                Seleccionar llave privada
+              </Button>
+              {privateKeyFile && (
+                <Typography variant="body2" color="lightgreen">
+                  Archivo seleccionado: <strong>{privateKeyFile.name}</strong>
+                </Typography>
+              )}
+              <Button
+                variant="contained"
+                color="success"
+                onClick={uploadFileWithSignature}
+                disabled={!privateKeyFile}
+              >
+                Confirmar envío
+              </Button>
+            </>
+          )}
 
           <Button
-            variant="contained"
-            color="secondary"
-            onClick={() => handleSignOption("ECC")}
+            onClick={() => {
+              setOpenUploadModal(false);
+              setSignMethod(null);
+              setPrivateKeyFile(null);
+            }}
+            color="error"
           >
-            Firmar con ECC
-          </Button>
-
-          <Button
-            variant="outlined"
-            onClick={() => handleSignOption("Sin firma")}
-          >
-            Subir sin firmar
-          </Button>
-
-          <Button onClick={() => setOpenUploadModal(false)} color="error">
             Cancelar
           </Button>
         </Paper>
       </Modal>
 
-      {/* Modal: confirmación de creación de claves */}
       <Modal open={openKeyModal} onClose={() => setOpenKeyModal(false)}>
         <Paper
           sx={{
@@ -299,23 +431,19 @@ function FileCard({
           <Typography variant="h6" align="center" color="error">
             ¡Importante!
           </Typography>
-
           <Typography variant="body2" align="center">
             Si se crean nuevas keys, se van a perder los archivos previamente
             subidos con la anterior key.
           </Typography>
-
           <Button variant="contained" color="error" onClick={confirmCreateKeys}>
             Aceptar
           </Button>
-
           <Button variant="outlined" onClick={() => setOpenKeyModal(false)}>
             Permanecer con las keys actuales
           </Button>
         </Paper>
       </Modal>
 
-      {/* Modal: resultado de verificación */}
       <Modal open={openVerifyModal} onClose={closeVerifyModal}>
         <Paper
           sx={{
@@ -339,18 +467,19 @@ function FileCard({
               ? "El archivo se ha verificado correctamente ✅"
               : "El archivo no se ha podido verificar correctamente ❌"}
           </Typography>
-
           <Divider sx={{ borderColor: "#444" }} />
-
-          <Typography variant="body2">
-            Firma del Usuario:{" "}
-            <strong>{verifyFile?.name || "firma_usuario.sig"}</strong>
-          </Typography>
-          <Typography variant="body2">
-            Archivo firmado:{" "}
-            <strong>{verifyKeyFile?.name || "archivo.pdf"}</strong>
-          </Typography>
-
+          {verifyResult && (
+            <>
+              <Typography variant="body2">
+                Firma del Usuario:{" "}
+                <strong>{verifyData.username || "Desconocido"}</strong>
+              </Typography>
+              <Typography variant="body2">
+                Archivo firmado:{" "}
+                <strong>{verifyData.file || "archivo.pdf"}</strong>
+              </Typography>
+            </>
+          )}
           <Button onClick={closeVerifyModal} variant="contained" sx={{ mt: 2 }}>
             Cerrar
           </Button>
