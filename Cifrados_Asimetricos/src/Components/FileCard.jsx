@@ -139,6 +139,35 @@ function FileCard() {
     getFiles();
   }, []);
 
+  const handleDownload = async (username, filename) => {
+    try {
+      const response = await fetch(`http://localhost:8000/download/${username}/${filename}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `${filename}_public_keys.zip`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } else {
+        const data = await response.json();
+        alert(data.message || "Error al descargar el archivo");
+      }
+    } catch (error) {
+      console.error("Error al descargar el archivo:", error);
+      alert("Error al descargar el archivo. Intente nuevamente.");
+    }
+  };
+
   const handleVerify = () => {
     const simulatedResult = Math.random() < 0.5;
     setVerifyResult(simulatedResult);
@@ -242,18 +271,27 @@ function FileCard() {
             Archivos
           </Typography>
           <List>
-            {files.map((file) => (
-              <ListItem
-              key={file.id}
-              secondaryAction={
-                <IconButton edge="end" aria-label="descargar" color="primary">
-                  <CloudDownloadIcon />
-                </IconButton>
-              }
-            >
-              <ListItemText primary={file.filename} />
-            </ListItem>
-            ))}
+            {files.map((file, index) => {
+              const [username, filename] = file.filename.split("/");
+
+              return (
+                <ListItem
+                  key={index}
+                  secondaryAction={
+                    <IconButton
+                      edge="end"
+                      aria-label="descargar"
+                      color="primary"
+                      onClick={() => handleDownload(username, filename)}
+                    >
+                      <CloudDownloadIcon />
+                    </IconButton>
+                  }
+                >
+                  <ListItemText primary={file.filename} />
+                </ListItem>
+              );
+            })}
           </List>
         </Paper>
 
