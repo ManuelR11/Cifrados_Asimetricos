@@ -21,12 +21,20 @@ function FileCard({
   publicKeyECC = "ECC123...",
   publicKeyRSA = "RSA456...",
 }) {
-  const [publicKeyInput, setPublicKeyInput] = useState("");
+  // Estados para carga de archivo general
   const [selectedFile, setSelectedFile] = useState(null);
   const [openUploadModal, setOpenUploadModal] = useState(false);
+
+  // Estados para verificación
+  const [verifyFile, setVerifyFile] = useState(null);
+  const [verifyKeyFile, setVerifyKeyFile] = useState(null);
+  const [verifyResult, setVerifyResult] = useState(null);
+  const [openVerifyModal, setOpenVerifyModal] = useState(false);
+
+  // Estados para creación de claves
   const [openKeyModal, setOpenKeyModal] = useState(false);
 
-  // Modal: subir archivo
+  // Manejadores generales
   const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (file) setSelectedFile(file);
@@ -46,15 +54,22 @@ function FileCard({
     setSelectedFile(null);
   };
 
-  // Modal: create keys
   const handleCreateKeys = () => {
     setOpenKeyModal(true);
   };
 
   const confirmCreateKeys = () => {
-    alert("Nuevas claves generadas."); // aquí puedes llamar una función real
+    alert("Nuevas claves generadas.");
     setOpenKeyModal(false);
   };
+
+  const handleVerify = () => {
+    const simulatedResult = Math.random() < 0.5;
+    setVerifyResult(simulatedResult);
+    setOpenVerifyModal(true);
+  };
+
+  const closeVerifyModal = () => setOpenVerifyModal(false);
 
   return (
     <Card
@@ -86,14 +101,14 @@ function FileCard({
 
       <Divider sx={{ my: 3, borderColor: "#444" }} />
 
-      {/* Cuerpo dividido en 3 secciones */}
+      {/* Secciones */}
       <Box
         display="flex"
         gap={3}
         flexWrap="wrap"
         justifyContent="space-between"
       >
-        {/* Subir archivo */}
+        {/* Sección 1: Subir archivo */}
         <Paper sx={{ flex: 1, p: 2, backgroundColor: "#2c2c2c" }}>
           <Typography variant="subtitle1" gutterBottom>
             Cargar archivo
@@ -136,7 +151,7 @@ function FileCard({
           </Button>
         </Paper>
 
-        {/* Lista de archivos */}
+        {/* Sección 2: Lista de archivos */}
         <Paper sx={{ flex: 1, p: 2, backgroundColor: "#2c2c2c" }}>
           <Typography variant="subtitle1" gutterBottom>
             Archivos
@@ -154,43 +169,71 @@ function FileCard({
           </List>
         </Paper>
 
-        {/* Verificar archivo + input de key */}
+        {/* Sección 3: Verificación */}
         <Paper sx={{ flex: 1, p: 2, backgroundColor: "#2c2c2c" }}>
           <Typography variant="subtitle1" gutterBottom>
             Verificar archivo
           </Typography>
 
-          <TextField
-            label="Public Key"
-            variant="filled"
-            value={publicKeyInput}
-            onChange={(e) => setPublicKeyInput(e.target.value)}
-            fullWidth
-            sx={{
-              mb: 2,
-              input: { color: "#fff" },
-              label: { color: "#aaa" },
-              backgroundColor: "#3a3a3a",
-            }}
+          <input
+            type="file"
+            id="verify-upload-input"
+            style={{ display: "none" }}
+            onChange={(e) => setVerifyFile(e.target.files[0])}
+          />
+          <input
+            type="file"
+            id="verify-key-input"
+            style={{ display: "none" }}
+            onChange={(e) => setVerifyKeyFile(e.target.files[0])}
           />
 
           <Button
-            variant="contained"
+            variant="outlined"
             component="label"
-            startIcon={<UploadFileIcon />}
             fullWidth
+            startIcon={<UploadFileIcon />}
+            htmlFor="verify-upload-input"
+            sx={{ mb: 1 }}
           >
-            Upload
-            <input type="file" hidden />
+            Subir archivo a verificar
           </Button>
 
-          <Button variant="outlined" sx={{ mt: 1 }} fullWidth>
-            Browse
+          <Button
+            variant="outlined"
+            component="label"
+            fullWidth
+            startIcon={<UploadFileIcon />}
+            htmlFor="verify-key-input"
+          >
+            Subir clave pública
+          </Button>
+
+          {verifyFile && (
+            <Typography variant="body2" mt={1} color="gray">
+              Archivo: <strong>{verifyFile.name}</strong>
+            </Typography>
+          )}
+
+          {verifyKeyFile && (
+            <Typography variant="body2" color="gray">
+              Clave pública: <strong>{verifyKeyFile.name}</strong>
+            </Typography>
+          )}
+
+          <Button
+            variant="contained"
+            color="primary"
+            fullWidth
+            sx={{ mt: 2 }}
+            onClick={handleVerify}
+          >
+            Verificar
           </Button>
         </Paper>
       </Box>
 
-      {/* Modal: opciones para firmar archivo */}
+      {/* Modal: opciones de firma */}
       <Modal open={openUploadModal} onClose={() => setOpenUploadModal(false)}>
         <Paper
           sx={{
@@ -268,6 +311,48 @@ function FileCard({
 
           <Button variant="outlined" onClick={() => setOpenKeyModal(false)}>
             Permanecer con las keys actuales
+          </Button>
+        </Paper>
+      </Modal>
+
+      {/* Modal: resultado de verificación */}
+      <Modal open={openVerifyModal} onClose={closeVerifyModal}>
+        <Paper
+          sx={{
+            width: 450,
+            margin: "auto",
+            marginTop: "10vh",
+            padding: 4,
+            backgroundColor: "#1e1e1e",
+            color: "white",
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+          }}
+        >
+          <Typography
+            variant="h6"
+            align="center"
+            color={verifyResult ? "success.main" : "error.main"}
+          >
+            {verifyResult
+              ? "El archivo se ha verificado correctamente ✅"
+              : "El archivo no se ha podido verificar correctamente ❌"}
+          </Typography>
+
+          <Divider sx={{ borderColor: "#444" }} />
+
+          <Typography variant="body2">
+            Firma del Usuario:{" "}
+            <strong>{verifyFile?.name || "firma_usuario.sig"}</strong>
+          </Typography>
+          <Typography variant="body2">
+            Archivo firmado:{" "}
+            <strong>{verifyKeyFile?.name || "archivo.pdf"}</strong>
+          </Typography>
+
+          <Button onClick={closeVerifyModal} variant="contained" sx={{ mt: 2 }}>
+            Cerrar
           </Button>
         </Paper>
       </Modal>
