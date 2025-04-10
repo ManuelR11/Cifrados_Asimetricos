@@ -16,11 +16,12 @@ import {
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 
-function FileCard({
-  user = "Usuario",
-  publicKeyECC = "ECC123...",
-  publicKeyRSA = "RSA456...",
-}) {
+function FileCard() {
+  // Variables globales
+  const user = localStorage.getItem("user") || "Usuario";
+  const publicKeyECC = (localStorage.getItem("publicKeyECC") || "No disponible").replace("-----BEGIN PUBLIC KEY-----", "").trim().slice(0, 50) + "...";
+  const publicKeyRSA = (localStorage.getItem("publicKeyRSA") || "No disponible").replace("-----BEGIN PUBLIC KEY-----", "").trim().slice(0, 50) + "...";
+
   // Estados para carga de archivo general
   const [selectedFile, setSelectedFile] = useState(null);
   const [openUploadModal, setOpenUploadModal] = useState(false);
@@ -58,8 +59,32 @@ function FileCard({
     setOpenKeyModal(true);
   };
 
-  const confirmCreateKeys = () => {
-    alert("Nuevas claves generadas.");
+  const confirmCreateKeys = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/keys", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        console.log("Claves creadas:", data);
+        localStorage.setItem("publicKeyECC", data.ecc_public_key);
+        localStorage.setItem("publicKeyRSA", data.rsa_public_key);
+        alert("Claves creadas exitosamente ✅");
+      }
+      else {
+        alert(data.message || "Error al crear claves");
+      }
+
+    } catch (error) {
+      console.error("Error al crear claves:", error);
+      alert("Error al crear claves. Intente nuevamente.");
+    }
+
     setOpenKeyModal(false);
   };
 

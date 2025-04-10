@@ -68,6 +68,7 @@ function LoginForm() {
 
       if (data.token) {
         localStorage.setItem("token", data.token);
+        localStorage.setItem("user", data.username);
         navigate("/home");
       } else {
         alert(data.message || "Inicio de sesión fallido");
@@ -102,7 +103,7 @@ function LoginForm() {
           </Typography>
 
           <TextField
-            label="Correo o Usuario"
+            label="Correo electrónico"
             variant="filled"
             fullWidth
             value={email} // ← conectamos al estado
@@ -203,7 +204,7 @@ function LoginForm() {
           />
 
           <TextField
-            label="UserName"
+            label="Nombre de usuario"
             variant="filled"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
