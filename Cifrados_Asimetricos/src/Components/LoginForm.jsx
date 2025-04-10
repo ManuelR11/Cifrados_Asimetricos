@@ -69,7 +69,7 @@ function LoginForm() {
       if (data.token) {
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", data.username);
-        navigate("/home");
+        navigate("/home", { replace: true });
       } else {
         alert(data.message || "Inicio de sesión fallido");
       }

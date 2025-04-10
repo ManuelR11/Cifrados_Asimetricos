@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Card,
@@ -21,6 +22,7 @@ function FileCard() {
   const user = localStorage.getItem("user") || "Usuario";
   const publicKeyECC = (localStorage.getItem("publicKeyECC") || "No disponible").replace("-----BEGIN PUBLIC KEY-----", "").trim().slice(0, 50) + "...";
   const publicKeyRSA = (localStorage.getItem("publicKeyRSA") || "No disponible").replace("-----BEGIN PUBLIC KEY-----", "").trim().slice(0, 50) + "...";
+  const navigate = useNavigate();
 
   // Estados para carga de archivo general
   const [selectedFile, setSelectedFile] = useState(null);
@@ -94,6 +96,10 @@ function FileCard() {
     setOpenVerifyModal(true);
   };
 
+  const handleLogout = () => {
+    navigate("/", { replace: true });
+  };
+
   const closeVerifyModal = () => setOpenVerifyModal(false);
 
   return (
@@ -119,9 +125,14 @@ function FileCard() {
             Public key RSA: {publicKeyRSA}
           </Typography>
         </Box>
-        <Button variant="contained" color="success" onClick={handleCreateKeys}>
-          Create keys
-        </Button>
+        <div style={{ display: "flex", gap: 10 }}>
+          <Button variant="contained" color="success" onClick={handleCreateKeys}>
+            Create keys
+          </Button>
+          <Button variant="contained" color="error" onClick={handleLogout}>
+            Log out
+          </Button>
+        </div>
       </Box>
 
       <Divider sx={{ my: 3, borderColor: "#444" }} />
