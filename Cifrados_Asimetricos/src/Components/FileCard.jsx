@@ -77,6 +77,27 @@ function FileCard() {
         localStorage.setItem("publicKeyECC", data.ecc_public_key);
         localStorage.setItem("publicKeyRSA", data.rsa_public_key);
         alert("Claves creadas exitosamente ✅");
+
+        const downloadResponse = await fetch("http://localhost:8000/download-private-keys", {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+
+        if (downloadResponse.ok) {
+          const blob = await downloadResponse.blob();
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = "private_keys.zip";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+        } else {
+          alert("Error al descargar las claves privadas");
+        }
       }
       else {
         alert(data.message || "Error al crear claves");
