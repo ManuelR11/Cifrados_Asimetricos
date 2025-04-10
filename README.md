@@ -71,14 +71,6 @@ Esto levantará el frontend en `http://localhost:5173`
 
 ## 📦 Tecnologías Usadas
 
-### Backend:
-
-- Python 3.10+
-- FastAPI
-- PyMongo
-- Cryptography
-- Uvicorn
-
 ### Frontend:
 
 - React + Vite
