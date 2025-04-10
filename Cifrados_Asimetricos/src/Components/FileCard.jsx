@@ -160,6 +160,7 @@ function FileCard() {
       console.error("Error al verificar:", error);
       alert("No se pudo verificar la firma.");
     }
+  }
 
   const confirmCreateKeys = async () => {
     try {
