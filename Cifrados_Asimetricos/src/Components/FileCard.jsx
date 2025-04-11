@@ -20,12 +20,19 @@ import UploadFileIcon from "@mui/icons-material/UploadFile";
 function FileCard() {
   // Variables globales
   const user = localStorage.getItem("user") || "Usuario";
-  const publicKeyECC = (localStorage.getItem("publicKeyECC") || "No disponible").replace("-----BEGIN PUBLIC KEY-----", "").trim().slice(0, 50) + "...";
-  const publicKeyRSA = (localStorage.getItem("publicKeyRSA") || "No disponible").replace("-----BEGIN PUBLIC KEY-----", "").trim().slice(0, 50) + "...";
+  const publicKeyECC =
+    (localStorage.getItem("publicKeyECC") || "No disponible")
+      .replace("-----BEGIN PUBLIC KEY-----", "")
+      .trim()
+      .slice(0, 50) + "...";
+  const publicKeyRSA =
+    (localStorage.getItem("publicKeyRSA") || "No disponible")
+      .replace("-----BEGIN PUBLIC KEY-----", "")
+      .trim()
+      .slice(0, 50) + "...";
   const navigate = useNavigate();
 
   const [files, setFiles] = useState([]);
-
 
   const [selectedFile, setSelectedFile] = useState(null);
   const [openUploadModal, setOpenUploadModal] = useState(false);
@@ -38,6 +45,7 @@ function FileCard() {
   const [verifyData, setVerifyData] = useState({});
   const [openVerifyModal, setOpenVerifyModal] = useState(false);
   const [openKeyModal, setOpenKeyModal] = useState(false);
+  const [verifyMethod, setVerifyMethod] = useState("rsa"); // default: RSA
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
@@ -128,7 +136,6 @@ function FileCard() {
     setPrivateKeyFile(null);
   };
 
-
   const handleCreateKeys = () => setOpenKeyModal(true);
 
   const handleVerify = async () => {
@@ -143,7 +150,7 @@ function FileCard() {
     const formData = new FormData();
     formData.append("file", verifyFile);
     formData.append("public_key_pem", verifyKeyFile);
-    formData.append("method", "rsa");
+    formData.append("method", verifyMethod);
 
     try {
       const response = await fetch("http://localhost:8000/verify-signature", {
@@ -160,7 +167,7 @@ function FileCard() {
       console.error("Error al verificar:", error);
       alert("No se pudo verificar la firma.");
     }
-  }
+  };
 
   const confirmCreateKeys = async () => {
     try {
@@ -168,7 +175,7 @@ function FileCard() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
 
@@ -179,12 +186,15 @@ function FileCard() {
         localStorage.setItem("publicKeyRSA", data.rsa_public_key);
         alert("Claves creadas exitosamente ✅");
 
-        const downloadResponse = await fetch("http://localhost:8000/download-private-keys", {
-          method: "GET",
-          headers: {
-            "Authorization": `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
+        const downloadResponse = await fetch(
+          "http://localhost:8000/download-private-keys",
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
 
         if (downloadResponse.ok) {
           const blob = await downloadResponse.blob();
@@ -199,11 +209,9 @@ function FileCard() {
         } else {
           alert("Error al descargar las claves privadas");
         }
-      }
-      else {
+      } else {
         alert(data.message || "Error al crear claves");
       }
-
     } catch (error) {
       console.error("Error al crear claves:", error);
       alert("Error al crear claves. Intente nuevamente.");
@@ -221,7 +229,7 @@ function FileCard() {
             "Content-Type": "application/json",
           },
         });
-  
+
         const data = await response.json();
 
         if (response.ok) {
@@ -240,13 +248,16 @@ function FileCard() {
 
   const handleDownload = async (username, filename) => {
     try {
-      const response = await fetch(`http://localhost:8000/download/${username}/${filename}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+      const response = await fetch(
+        `http://localhost:8000/download/${username}/${filename}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
 
       if (response.ok) {
         const blob = await response.blob();
@@ -296,7 +307,11 @@ function FileCard() {
           </Typography>
         </Box>
         <div style={{ display: "flex", gap: 10 }}>
-          <Button variant="contained" color="success" onClick={handleCreateKeys}>
+          <Button
+            variant="contained"
+            color="success"
+            onClick={handleCreateKeys}
+          >
             Create keys
           </Button>
           <Button variant="contained" color="error" onClick={handleLogout}>
@@ -420,6 +435,24 @@ function FileCard() {
           >
             Subir clave pública
           </Button>
+
+          {/* Método de verificación */}
+          <Box mt={2} display="flex" justifyContent="space-between" gap={1}>
+            <Button
+              variant={verifyMethod === "rsa" ? "contained" : "outlined"}
+              fullWidth
+              onClick={() => setVerifyMethod("rsa")}
+            >
+              Verificar con RSA
+            </Button>
+            <Button
+              variant={verifyMethod === "ecc" ? "contained" : "outlined"}
+              fullWidth
+              onClick={() => setVerifyMethod("ecc")}
+            >
+              Verificar con ECC
+            </Button>
+          </Box>
 
           {verifyFile && (
             <Typography variant="body2" mt={1} color="gray">
